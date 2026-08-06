@@ -1,32 +1,14 @@
 # robots.txt — creditconsultant.in
-# https://developers.google.com/search/docs/crawling-indexing/robots/intro
 
 User-agent: *
 Allow: /
-
-# Block dashboard and admin from indexing
 Disallow: /admin
 Disallow: /dashboard
 Disallow: /admin/
 Disallow: /dashboard/
-
-# Allow all crawlers full access to public content
-User-agent: Googlebot
-Allow: /
-Disallow: /admin
-Disallow: /dashboard
-
-User-agent: Bingbot
-Allow: /
-Disallow: /admin
-Disallow: /dashboard
-
-User-agent: Slurp
-Allow: /
-
-# Crawl-delay for non-Google bots
-User-agent: *
-Crawl-delay: 1
+Disallow: /?p
+Disallow: /?srsltid=
+Disallow: /product-category
 
 # Sitemap location
 Sitemap: https://creditconsultant.in/sitemap.xml

@@ -28,7 +28,7 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
   return (
     <div className="relative w-36 h-36 flex items-center justify-center">
       <svg className="absolute -rotate-90" width="144" height="144" viewBox="0 0 144 144">
-        <circle cx="72" cy="72" r={r} fill="none" stroke="#e5e7eb" strokeWidth="10" />
+        <circle cx="72" cy="72" r={r} fill="none" stroke="#1e293b" strokeWidth="10" />
         <circle
           cx="72" cy="72" r={r} fill="none" stroke={color} strokeWidth="10"
           strokeDasharray={`${circ * pct} ${circ}`} strokeLinecap="round"
@@ -36,8 +36,8 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
         />
       </svg>
       <div className="text-center z-10">
-        <div className="text-3xl font-black text-gray-900">{score > 0 ? score : "---"}</div>
-        <div className="text-[10px] text-gray-400 uppercase tracking-widest">out of 900</div>
+        <div className="text-4xl font-black text-white drop-shadow-md">{score > 0 ? score : "---"}</div>
+        <div className="text-[10px] text-teal-300 font-bold uppercase tracking-widest mt-0.5">out of 900</div>
       </div>
     </div>
   );
@@ -332,30 +332,79 @@ export function UserDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* ── Sidebar ── */}
-      <aside className="w-60 bg-white border-r border-gray-200 flex flex-col fixed top-0 left-0 h-full z-30 shadow-sm">
-        <div className="p-5 border-b border-gray-100">
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row w-full">
+      {/* ── Mobile Top Tab Bar (< lg screens) ── */}
+      <div className="lg:hidden bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-30 shadow-xs">
+        <div className="flex items-center justify-between gap-3 mb-2.5">
+          <div className="flex items-center gap-2">
+            <img src={cibilLogo.src ?? (cibilLogo as any)} alt="Credit Consultant" className="h-7 w-auto" />
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-200">
+              User Portal
+            </span>
+          </div>
+          {isVerified ? (
+            <span className="text-xs font-bold text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> {displayName}
+            </span>
+          ) : (
+            <span className="text-[11px] font-bold text-amber-800 flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+              <Lock className="w-3 h-3 text-amber-600" /> Locked
+            </span>
+          )}
+        </div>
+
+        {/* Mobile Tab Navigation */}
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+          {[
+            { label: "Overview", icon: TrendingUp, tab: "overview" },
+            { label: "Reports",  icon: FileText,   tab: "reports"  },
+            { label: "History",  icon: Star,       tab: "history"  },
+          ].map((item) => {
+            const Icon = item.icon;
+            const active = activeTab === item.tab;
+            return (
+              <button
+                key={item.tab}
+                disabled={!isVerified}
+                onClick={() => setActiveTab(item.tab as any)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                  !isVerified
+                    ? "opacity-40 cursor-not-allowed text-slate-400"
+                    : active
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" /> {item.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Desktop Sidebar (>= lg screens) ── */}
+      <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200 flex-col shrink-0 min-h-[calc(100vh-6rem)]">
+        <div className="p-5 border-b border-slate-100">
           <img src={cibilLogo.src ?? (cibilLogo as any)} alt="Credit Consultant" className="h-8 w-auto" />
-          <p className="text-gray-400 text-xs mt-2">User Credit Portal</p>
+          <p className="text-slate-400 text-xs mt-1.5 font-medium">User Credit Portal</p>
         </div>
 
         {isVerified ? (
-          <div className="p-4 border-b border-gray-100 bg-teal-50/50">
+          <div className="p-4 border-b border-slate-100 bg-teal-50/50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-600 to-emerald-700 flex items-center justify-center text-white font-bold text-sm shadow-md">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-600 to-emerald-700 flex items-center justify-center text-white font-bold text-sm shadow-md shrink-0">
                 {displayName.charAt(0)}
               </div>
               <div className="overflow-hidden">
-                <p className="text-sm font-bold text-gray-900 leading-tight truncate">{displayName}</p>
+                <p className="text-sm font-bold text-slate-900 leading-tight truncate">{displayName}</p>
                 <p className="text-xs text-teal-700 font-medium truncate">{displayMobile}</p>
               </div>
             </div>
           </div>
         ) : (
-          <div className="p-4 border-b border-gray-100 bg-amber-50/60">
+          <div className="p-4 border-b border-slate-100 bg-amber-50/60">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs">
+              <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs shrink-0">
                 <Lock className="w-4 h-4" />
               </div>
               <div>
@@ -379,12 +428,12 @@ export function UserDashboard() {
                 key={item.tab}
                 disabled={!isVerified}
                 onClick={() => setActiveTab(item.tab as any)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${
                   !isVerified
-                    ? "opacity-50 cursor-not-allowed text-gray-400"
+                    ? "opacity-50 cursor-not-allowed text-slate-400"
                     : active
                     ? "bg-teal-600 text-white shadow-sm"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
                 <Icon className="w-4 h-4" /> {item.label}
@@ -393,16 +442,16 @@ export function UserDashboard() {
           })}
         </nav>
 
-        <div className="p-3 border-t border-gray-100 space-y-1">
+        <div className="p-3 border-t border-slate-100 space-y-1">
           <Link to="/">
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition-all font-medium">
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-600 hover:bg-slate-100 transition-all font-semibold">
               <Home className="w-4 h-4" /> Back to Site
             </button>
           </Link>
           {isVerified && (
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-600 hover:bg-red-50 transition-all font-medium"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-600 hover:bg-red-50 transition-all font-semibold"
             >
               <LogOut className="w-4 h-4" /> Switch / Reset
             </button>
@@ -411,51 +460,51 @@ export function UserDashboard() {
       </aside>
 
       {/* ── Main Canvas ── */}
-      <div className="ml-60 flex-1">
-        {/* Topbar */}
-        <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-20 shadow-xs">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">
-              {!isVerified
-                ? "Identity Verification Required"
-                : activeTab === "overview"
-                ? "My Credit Overview"
-                : activeTab === "reports"
-                ? "My Reports"
-                : "Score History"}
-            </h1>
-            <div className="flex items-center gap-2 mt-0.5">
+      <div className="flex-1 min-w-0 flex flex-col">
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6 flex-1">
+          {/* Action Header Row inside Main Canvas */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                {!isVerified
+                  ? "Identity Verification Required"
+                  : activeTab === "overview"
+                  ? "My Credit Overview"
+                  : activeTab === "reports"
+                  ? "My Reports"
+                  : "Score History"}
+              </h1>
+              <div className="flex items-center gap-2 mt-1">
+                {isVerified ? (
+                  <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Verified Session · {displayName} ({displayPan})
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-xs text-amber-700 font-semibold">
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-600" /> Enter PAN & Mobile to Unlock Dashboard
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 self-stretch sm:self-auto justify-end">
               {isVerified ? (
-                <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Verified Session · {displayName} ({displayPan})
-                </span>
+                <>
+                  <Button size="sm" onClick={loadReports} disabled={loading} className="bg-teal-600 hover:bg-teal-700 gap-1.5 font-bold text-xs sm:text-sm">
+                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+                    <span>{loading ? "Refreshing…" : "Refresh Report"}</span>
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleLogout} className="text-red-600 border-red-200 hover:bg-red-50 font-semibold text-xs sm:text-sm">
+                    Reset
+                  </Button>
+                </>
               ) : (
-                <span className="flex items-center gap-1 text-xs text-amber-700 font-semibold">
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600" /> Enter PAN & Mobile to Unlock Dashboard
-                </span>
+                <Button size="sm" onClick={() => setShowCheckModal(true)} className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold gap-1.5 shadow-md text-xs sm:text-sm">
+                  <Sparkles className="w-3.5 h-3.5" /> Check Score Modal
+                </Button>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {isVerified ? (
-              <>
-                <Button size="sm" onClick={loadReports} disabled={loading} className="bg-teal-600 hover:bg-teal-700 gap-1.5 font-bold">
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-                  {loading ? "Refreshing…" : "Refresh Report"}
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleLogout} className="text-red-600 border-red-200 hover:bg-red-50 font-semibold">
-                  Reset
-                </Button>
-              </>
-            ) : (
-              <Button size="sm" onClick={() => setShowCheckModal(true)} className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold gap-1.5 shadow-md">
-                <Sparkles className="w-3.5 h-3.5" /> Check Score Modal
-              </Button>
-            )}
-          </div>
-        </header>
-
-        <main className="px-8 py-8 space-y-6">
 
           {/* ═══════════════════════════════════════════════════════════
              UNVERIFIED STATE — LOCK SCREEN / IN-PAGE VERIFICATION FORM
@@ -680,29 +729,34 @@ export function UserDashboard() {
               {activeTab === "overview" && (
                 <>
                   {/* Score hero */}
-                  <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-teal-950 rounded-3xl p-8 text-white flex flex-col lg:flex-row items-center gap-8 shadow-xl relative overflow-hidden border border-slate-800">
+                  <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-teal-950 rounded-3xl p-6 sm:p-8 text-white flex flex-col lg:flex-row items-center gap-6 sm:gap-8 shadow-xl relative overflow-hidden border border-slate-800">
                     <div className="absolute top-0 right-0 w-80 h-80 bg-teal-500/10 rounded-full filter blur-3xl pointer-events-none" />
                     <ScoreRing score={displayScore} color="#34d399" />
                     <div className="flex-1 text-center lg:text-left z-10">
-                      <p className="text-teal-200 text-xs font-bold uppercase tracking-widest mb-1">
-                        Live Bureau Score · {displayBureau}
-                      </p>
-                      <h2 className="text-4xl font-black mb-1">{displayScore} — {displayRating}</h2>
+                      <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 mb-1.5">
+                        <span className="px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[10px] font-bold uppercase tracking-wider">
+                          Official {displayBureau} Report
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                          Control ID: EQF-{activeSession?.id ? activeSession.id.slice(-6) : "884209"}
+                        </span>
+                      </div>
+                      <h2 className="text-3xl sm:text-4xl font-black mb-1 tracking-tight">{displayScore} — {displayRating}</h2>
                       <div className="flex items-center gap-2 justify-center lg:justify-start mt-2">
                         <ArrowUpRight className="w-5 h-5 text-emerald-400" />
                         <span className="text-emerald-400 font-bold">+124 pts potential</span>
                         <span className="text-slate-400 text-xs">with repair plan</span>
                       </div>
-                      <p className="text-slate-300 text-xs mt-3 max-w-md leading-relaxed font-normal">
-                        Your credit profile for <strong>{displayName}</strong> is in the {displayRating} bracket. A structured 60-day dispute resolution plan can elevate your profile to Tier 1 lender eligibility.
+                      <p className="text-slate-300 text-xs sm:text-sm mt-3 max-w-md leading-relaxed font-normal">
+                        Your credit profile for <strong className="text-white font-bold">{displayName}</strong> is in the {displayRating} bracket. A structured 60-day dispute resolution plan can elevate your profile to Tier 1 lender eligibility.
                       </p>
                     </div>
-                    <div className="hidden lg:flex flex-col gap-2.5 text-xs z-10 min-w-[200px]">
+                    <div className="hidden lg:flex flex-col gap-2.5 text-xs z-10 min-w-[220px]">
                       {[
                         { label: "Customer", value: displayName },
-                        { label: "PAN", value: displayPan },
+                        { label: "PAN Card", value: displayPan },
                         { label: "Mobile", value: displayMobile },
-                        { label: "Bureau SLA", value: "30 Days" },
+                        { label: "Bureau SLA", value: "30 Days SLA" },
                       ].map((m) => (
                         <div key={m.label} className="bg-white/10 rounded-xl px-4 py-2.5 flex justify-between gap-6 backdrop-blur-md border border-white/10">
                           <span className="text-slate-300 font-medium">{m.label}</span>
@@ -726,12 +780,12 @@ export function UserDashboard() {
                         indigo: "bg-indigo-50 text-indigo-600", yellow: "bg-yellow-50 text-yellow-600",
                       };
                       return (
-                        <Card key={s.label} className="border border-slate-200/80 shadow-sm">
+                        <Card key={s.label} className="border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
                           <CardContent className="pt-5 pb-5">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs text-gray-400 mb-1">{s.label}</p>
-                                <p className="text-xl font-black text-gray-900">{s.value}</p>
+                                <p className="text-xs text-slate-400 mb-1 font-medium">{s.label}</p>
+                                <p className="text-xl font-black text-slate-900">{s.value}</p>
                               </div>
                               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colMap[s.color]}`}>
                                 <Icon className="w-5 h-5" />
@@ -743,27 +797,68 @@ export function UserDashboard() {
                     })}
                   </div>
 
-                  {/* Factors */}
-                  <Card className="border border-slate-200/80 shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="text-base font-bold text-slate-900">Score Factors & Analysis</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {factors.map((f) => (
-                        <FactorBar key={f.label} {...f} />
-                      ))}
-                    </CardContent>
-                  </Card>
+                  {/* Factors & Actionable Dispute Plan */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Factors */}
+                    <Card className="border border-slate-200/80 shadow-xs">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+                          <TrendingUp className="w-5 h-5 text-teal-600" /> Score Factors & Analysis
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {factors.map((f) => (
+                          <FactorBar key={f.label} {...f} />
+                        ))}
+                      </CardContent>
+                    </Card>
+
+                    {/* Recommended Advisory Actions */}
+                    <Card className="border border-slate-200/80 shadow-xs bg-gradient-to-br from-white to-slate-50">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+                          <ShieldCheck className="w-5 h-5 text-emerald-600" /> Recommended Dispute Actions
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {[
+                          { title: "Delinquency Dispute Letter", desc: "Submit formal dispute for late payment marks.", target: "+45 pts" },
+                          { title: "Card Utilisation Audit", desc: "Maintain total card usage below 30% limit.", target: "+35 pts" },
+                          { title: "Hard Inquiry Clean-up", desc: "Challenge unauthorized bank loan queries.", target: "+25 pts" },
+                        ].map((act) => (
+                          <div key={act.title} className="p-3.5 bg-white rounded-xl border border-slate-200/80 flex items-center justify-between gap-3 shadow-2xs hover:border-teal-300 transition-all">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs font-bold text-slate-900">{act.title}</p>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                  {act.target}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 mt-0.5">{act.desc}</p>
+                            </div>
+                            <a
+                              href="https://wa.me/919538049888?text=Hi%2C%20I%20want%20to%20start%20my%20dispute%20resolution%20plan"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-bold text-teal-700 hover:text-teal-800 whitespace-nowrap"
+                            >
+                              Request →
+                            </a>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </div>
 
                   {/* CTA */}
-                  <div className="bg-gradient-to-r from-teal-900 to-slate-900 text-white rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg border border-slate-800">
+                  <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-teal-900 text-white rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg border border-slate-800">
                     <div>
                       <p className="font-bold text-white mb-1">Want to improve your CIBIL score faster?</p>
                       <p className="text-xs text-teal-200/90">Talk to a certified Credit Consultant advisor for a personalized repair plan.</p>
                     </div>
                     <a href="tel:+919538049888">
                       <Button className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold whitespace-nowrap gap-2">
-                        <Phone className="w-4 h-4" /> Call Advisor
+                        <Phone className="w-4 h-4" /> Call Advisor (+91 95380 49888)
                       </Button>
                     </a>
                   </div>
