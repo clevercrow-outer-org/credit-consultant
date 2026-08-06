@@ -68,6 +68,64 @@ export interface AllReportsResponse {
   per_page: number;
 }
 
+export interface PrefillMobileProfile {
+  full_name?: string;
+  mobile?: string;
+  pan?: string;
+  dob?: string;
+  gender?: "M" | "F" | "";
+}
+
+export async function fetchPrefillByMobile(mobile: string): Promise<PrefillMobileProfile | null> {
+  const cleanMobile = mobile.replace(/\D/g, "").slice(-10);
+  if (!/^[6-9]\d{9}$/.test(cleanMobile)) return null;
+
+  try {
+    const endpoint = typeof window !== "undefined" ? "/api/cibil/prefill-mobile" : "https://apibackend.avmanagement.in/api/cibil/prefill-mobile/";
+
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const body = JSON.stringify({ mobile: cleanMobile });
+
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body,
+    });
+
+    const response = await res.json().catch(() => null);
+    if (!response || response?.status === false) return null;
+
+    const payload = response?.data?.data ?? response?.data ?? response ?? {};
+    const details = payload?.details ?? {};
+    const personal = details.personal_info ?? {};
+    const identity = details.identity_info ?? {};
+    const panNumber = Array.isArray(identity.pan_number) ? identity.pan_number[0]?.id_number : "";
+    const rawGender = String(personal.gender ?? "").trim();
+    const normalizedGender: "M" | "F" | "" = rawGender === "Male"
+      ? "M"
+      : rawGender === "Female"
+        ? "F"
+        : (rawGender === "M" || rawGender === "F" ? rawGender : "");
+
+    const fullName = String(personal.full_name ?? "").trim();
+    const mobileNumber = String(payload.mobile ?? cleanMobile).replace(/\D/g, "").slice(-10);
+    const pan = String(panNumber ?? "").trim().toUpperCase();
+    const dob = String(personal.dob ?? "").trim();
+
+    if (!fullName && !pan && !dob && !normalizedGender) return null;
+
+    return {
+      full_name: fullName,
+      mobile: mobileNumber,
+      pan,
+      dob,
+      gender: normalizedGender as "M" | "F" | "",
+    };
+  } catch {
+    return null;
+  }
+}
+
 /* ── Contact (stored locally + synced to admin) ─────────────── */
 export interface ContactRecord {
   id: string;

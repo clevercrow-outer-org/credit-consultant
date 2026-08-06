@@ -15,7 +15,7 @@ import cibilLogo from "@/imports/CIBIL_Logo.png";
 import {
   getActiveSession, clearActiveSession, saveContact, getContacts, fetchCibilReport,
   fetchAllReports, downloadEquifaxPdf, syncAllStoredContactsToHubSpot, type ContactRecord, type CreditReport,
-  generateReportPdf, downloadPdf, downloadInvoicePdf,
+  generateReportPdf, downloadPdf, downloadInvoicePdf, fetchPrefillByMobile,
 } from "../api/creditApi";
 import { openRazorpayCheckout } from "../api/razorpay";
 import { CheckScoreModal } from "./CheckScoreModal";
@@ -79,6 +79,10 @@ export function UserDashboard() {
   const [vErrs, setVErrs] = useState<Record<string, string>>({});
   const [vLoading, setVLoading] = useState(false);
   const [vStatus, setVStatus] = useState("");
+  const [prefillLoading, setPrefillLoading] = useState(false);
+  const [showPrefillSearch, setShowPrefillSearch] = useState(true);
+  const [lookupMobile, setLookupMobile] = useState("");
+  const [prefillMessage, setPrefillMessage] = useState("");
 
   const [liveReports, setLiveReports] = useState<CreditReport[]>([]);
   const [loading, setLoading] = useState(false);
@@ -135,6 +139,52 @@ export function UserDashboard() {
     clearActiveSession();
     setActiveSessionState(null);
     setVForm({ name: "", mobile: "", pan: "", dob: "", gender: "M", consent: true });
+  };
+
+  const handlePrefillByMobile = async () => {
+    const cleanMobile = lookupMobile.replace(/\D/g, "").slice(-10);
+    if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
+      setPrefillMessage("");
+      setVErrs((current) => ({ ...current, mobile: "Enter a valid 10-digit mobile number" }));
+      return;
+    }
+
+    setPrefillLoading(true);
+    setPrefillMessage("");
+    setVErrs((current) => ({ ...current, mobile: "" }));
+
+    try {
+      const profile = await fetchPrefillByMobile(cleanMobile);
+      if (!profile) {
+        setVForm((current) => ({ ...current, name: "", mobile: cleanMobile, pan: "", dob: "", gender: "", consent: true }));
+        setLookupMobile(cleanMobile);
+        setShowPrefillSearch(false);
+        setPrefillMessage("Number details not found. Please fill manually.");
+        return;
+      }
+
+      const nextForm: typeof vForm = {
+        ...vForm,
+        mobile: profile?.mobile || cleanMobile,
+        name: profile?.full_name || "",
+        pan: profile?.pan || "",
+        dob: profile?.dob || "",
+        gender: (profile?.gender === "M" || profile?.gender === "F") ? profile.gender : "",
+      };
+
+      setVForm(nextForm);
+      setLookupMobile(nextForm.mobile);
+      setShowPrefillSearch(false);
+      setPrefillMessage("");
+      setVErrs((current) => ({ ...current, name: "", mobile: "", pan: "", dob: "", gender: "" }));
+    } catch {
+      setVForm((current) => ({ ...current, name: "", mobile: cleanMobile, pan: "", dob: "", gender: "", consent: true }));
+      setLookupMobile(cleanMobile);
+      setShowPrefillSearch(false);
+      setPrefillMessage("Number details not found. Please fill manually.");
+    } finally {
+      setPrefillLoading(false);
+    }
   };
 
   const handleDownload = async (report_id: string, name: string) => {
@@ -498,108 +548,165 @@ export function UserDashboard() {
                     </Button>
                   </div>
 
-                  <form onSubmit={handleInlineVerify} className="space-y-4">
-                    <div>
-                      <Label className="text-xs font-bold text-slate-700">Full Name (as per PAN)</Label>
-                      <Input
-                        autoComplete="off"
-                        placeholder="e.g. Rajesh Kumar"
-                        value={vForm.name}
-                        onChange={(e) => setVForm({ ...vForm, name: e.target.value })}
-                        className={`mt-1 h-11 rounded-xl ${vErrs.name ? "border-red-500" : ""}`}
-                      />
-                      {vErrs.name && <p className="text-xs text-red-500 mt-1 font-semibold">{vErrs.name}</p>}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-xs font-bold text-slate-700">Mobile Number</Label>
-                        <Input
-                          autoComplete="off"
-                          placeholder="10-digit mobile"
-                          maxLength={10}
-                          value={vForm.mobile}
-                          onChange={(e) => setVForm({ ...vForm, mobile: e.target.value.replace(/\D/g, "") })}
-                          className={`mt-1 h-11 rounded-xl ${vErrs.mobile ? "border-red-500" : ""}`}
-                        />
-                        {vErrs.mobile && <p className="text-xs text-red-500 mt-1 font-semibold">{vErrs.mobile}</p>}
-                      </div>
-
-                      <div>
-                        <Label className="text-xs font-bold text-slate-700">PAN Card Number</Label>
-                        <Input
-                          autoComplete="off"
-                          placeholder="e.g. ABCDE1234F"
-                          maxLength={10}
-                          value={vForm.pan}
-                          onChange={(e) => setVForm({ ...vForm, pan: e.target.value.toUpperCase() })}
-                          className={`mt-1 h-11 rounded-xl uppercase font-mono ${vErrs.pan ? "border-red-500" : ""}`}
-                        />
-                        {vErrs.pan && <p className="text-xs text-red-500 mt-1 font-semibold">{vErrs.pan}</p>}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-xs font-bold text-slate-700">Date of Birth</Label>
-                        <Input
-                          autoComplete="off"
-                          type="date"
-                          value={vForm.dob}
-                          onChange={(e) => setVForm({ ...vForm, dob: e.target.value })}
-                          className={`mt-1 h-11 rounded-xl ${vErrs.dob ? "border-red-500" : ""}`}
-                        />
-                        {vErrs.dob && <p className="text-xs text-red-500 mt-1 font-semibold">{vErrs.dob}</p>}
-                      </div>
-
-                      <div>
-                        <Label className="text-xs font-bold text-slate-700">Gender</Label>
-                        <div className="grid grid-cols-2 gap-2 mt-1">
-                          {(["M", "F"] as const).map((g) => (
-                            <button
-                              key={g}
-                              type="button"
-                              onClick={() => setVForm({ ...vForm, gender: g })}
-                              className={`h-11 rounded-xl text-xs font-bold border transition-all ${
-                                vForm.gender === g ? "bg-teal-600 text-white border-teal-600" : "bg-slate-50 text-slate-700 border-slate-200"
-                              }`}
-                            >
-                              {g === "M" ? "Male" : "Female"}
-                            </button>
-                          ))}
+                  {showPrefillSearch ? (
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                        <Label className="text-xs font-bold text-blue-900">Search Mobile Number</Label>
+                        <div className="mt-3 flex flex-col sm:flex-row gap-3">
+                          <Input
+                            autoComplete="off"
+                            placeholder="Enter 10-digit mobile"
+                            maxLength={10}
+                            value={lookupMobile}
+                            onChange={(e) => setLookupMobile(e.target.value.replace(/\D/g, ""))}
+                            className="h-11 rounded-xl"
+                          />
+                          <Button
+                            type="button"
+                            onClick={handlePrefillByMobile}
+                            disabled={prefillLoading}
+                            className="h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold whitespace-nowrap"
+                          >
+                            {prefillLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Searching…</span> : "Search & Fill"}
+                          </Button>
                         </div>
-                        {vErrs.gender && <p className="text-xs text-red-500 mt-1 font-semibold">{vErrs.gender}</p>}
+                        {vErrs.mobile && <p className="text-xs text-red-500 mt-2 font-semibold">{vErrs.mobile}</p>}
+                        {prefillMessage && <p className="text-xs text-amber-700 mt-2 font-semibold">{prefillMessage}</p>}
+                        <p className="text-[11px] text-blue-700 mt-2">Search by mobile to fetch name, PAN, DOB, and gender before continuing with the verification form.</p>
                       </div>
                     </div>
+                  ) : (
+                    <form onSubmit={handleInlineVerify} className="space-y-4">
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Mobile search result</p>
+                          <p className="text-sm font-semibold text-slate-800">{vForm.mobile ? `+91 ${vForm.mobile}` : "Mobile updated"}</p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setVForm((current) => ({ ...current, name: "", mobile: "", pan: "", dob: "", gender: "", consent: true }));
+                            setLookupMobile("");
+                            setPrefillMessage("");
+                            setVErrs((current) => ({ ...current, name: "", mobile: "", pan: "", dob: "", gender: "" }));
+                            setShowPrefillSearch(true);
+                          }}
+                          className="text-xs font-bold"
+                        >
+                          Use Another Mobile
+                        </Button>
+                      </div>
 
-                    <div className="pt-2">
-                      <label className="flex items-start gap-2.5 text-xs text-slate-600 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={vForm.consent}
-                          onChange={(e) => setVForm({ ...vForm, consent: e.target.checked })}
-                          className="mt-0.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                      {prefillMessage && (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                          {prefillMessage}
+                        </div>
+                      )}
+
+                      <div>
+                        <Label className="text-xs font-bold text-slate-700">Full Name (as per PAN)</Label>
+                        <Input
+                          autoComplete="off"
+                          placeholder="e.g. Rajesh Kumar"
+                          value={vForm.name}
+                          onChange={(e) => setVForm({ ...vForm, name: e.target.value })}
+                          className={`mt-1 h-11 rounded-xl ${vErrs.name ? "border-red-500" : ""}`}
                         />
-                        <span>I authorize Credit Consultant to fetch my CIBIL credit score and setup my dashboard session.</span>
-                      </label>
-                      {vErrs.consent && <p className="text-xs text-red-500 mt-1 font-semibold">{vErrs.consent}</p>}
-                    </div>
-
-                    {vStatus && (
-                      <div className="p-3 rounded-xl bg-teal-50 border border-teal-200 text-teal-800 text-xs font-bold flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
-                        <span>{vStatus}</span>
+                        {vErrs.name && <p className="text-xs text-red-500 mt-1 font-semibold">{vErrs.name}</p>}
                       </div>
-                    )}
 
-                    <Button
-                      type="submit"
-                      disabled={vLoading}
-                      className="w-full h-12 bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 hover:from-teal-700 hover:to-emerald-800 text-white font-bold text-sm rounded-xl shadow-lg shadow-teal-600/20"
-                    >
-                      {vLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Pay ₹299 & Unlock Credit Dashboard"}
-                    </Button>
-                  </form>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs font-bold text-slate-700">Mobile Number</Label>
+                          <Input
+                            autoComplete="off"
+                            placeholder="10-digit mobile"
+                            maxLength={10}
+                            value={vForm.mobile}
+                            onChange={(e) => setVForm({ ...vForm, mobile: e.target.value.replace(/\D/g, "") })}
+                            className={`mt-1 h-11 rounded-xl ${vErrs.mobile ? "border-red-500" : ""}`}
+                          />
+                          {vErrs.mobile && <p className="text-xs text-red-500 mt-1 font-semibold">{vErrs.mobile}</p>}
+                        </div>
+
+                        <div>
+                          <Label className="text-xs font-bold text-slate-700">PAN Card Number</Label>
+                          <Input
+                            autoComplete="off"
+                            placeholder="e.g. ABCDE1234F"
+                            maxLength={10}
+                            value={vForm.pan}
+                            onChange={(e) => setVForm({ ...vForm, pan: e.target.value.toUpperCase() })}
+                            className={`mt-1 h-11 rounded-xl uppercase font-mono ${vErrs.pan ? "border-red-500" : ""}`}
+                          />
+                          {vErrs.pan && <p className="text-xs text-red-500 mt-1 font-semibold">{vErrs.pan}</p>}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs font-bold text-slate-700">Date of Birth</Label>
+                          <Input
+                            autoComplete="off"
+                            type="date"
+                            value={vForm.dob}
+                            onChange={(e) => setVForm({ ...vForm, dob: e.target.value })}
+                            className={`mt-1 h-11 rounded-xl ${vErrs.dob ? "border-red-500" : ""}`}
+                          />
+                          {vErrs.dob && <p className="text-xs text-red-500 mt-1 font-semibold">{vErrs.dob}</p>}
+                        </div>
+
+                        <div>
+                          <Label className="text-xs font-bold text-slate-700">Gender</Label>
+                          <div className="grid grid-cols-2 gap-2 mt-1">
+                            {(["M", "F"] as const).map((g) => (
+                              <button
+                                key={g}
+                                type="button"
+                                onClick={() => setVForm({ ...vForm, gender: g })}
+                                className={`h-11 rounded-xl text-xs font-bold border transition-all ${
+                                  vForm.gender === g ? "bg-teal-600 text-white border-teal-600" : "bg-slate-50 text-slate-700 border-slate-200"
+                                }`}
+                              >
+                                {g === "M" ? "Male" : "Female"}
+                              </button>
+                            ))}
+                          </div>
+                          {vErrs.gender && <p className="text-xs text-red-500 mt-1 font-semibold">{vErrs.gender}</p>}
+                        </div>
+                      </div>
+
+                      <div className="pt-2">
+                        <label className="flex items-start gap-2.5 text-xs text-slate-600 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={vForm.consent}
+                            onChange={(e) => setVForm({ ...vForm, consent: e.target.checked })}
+                            className="mt-0.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                          />
+                          <span>I authorize Credit Consultant to fetch my CIBIL credit score and setup my dashboard session.</span>
+                        </label>
+                        {vErrs.consent && <p className="text-xs text-red-500 mt-1 font-semibold">{vErrs.consent}</p>}
+                      </div>
+
+                      {vStatus && (
+                        <div className="p-3 rounded-xl bg-teal-50 border border-teal-200 text-teal-800 text-xs font-bold flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
+                          <span>{vStatus}</span>
+                        </div>
+                      )}
+
+                      <Button
+                        type="submit"
+                        disabled={vLoading}
+                        className="w-full h-12 bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 hover:from-teal-700 hover:to-emerald-800 text-white font-bold text-sm rounded-xl shadow-lg shadow-teal-600/20"
+                      >
+                        {vLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Pay ₹299 & Unlock Credit Dashboard"}
+                      </Button>
+                    </form>
+                  )}
                 </CardContent>
               </Card>
 
