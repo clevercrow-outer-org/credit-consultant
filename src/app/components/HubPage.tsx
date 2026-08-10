@@ -49,9 +49,9 @@ export function HubPage({
 
   const canonicalUrl = `${BASE}/${hubSlug}`;
   const colorMap: Record<string, { hero: string; btn: string; badge: string; card: string; border: string }> = {
-    blue:   { hero: "from-teal-600 to-teal-900",   btn: "bg-teal-600 hover:bg-teal-700",   badge: "bg-teal-100 text-teal-700",   card: "hover:border-teal-300 hover:bg-teal-50", border: "border-teal-200" },
+    blue: { hero: "from-teal-600 to-teal-900", btn: "bg-teal-600 hover:bg-teal-700", badge: "bg-teal-100 text-teal-700", card: "hover:border-teal-300 hover:bg-teal-50", border: "border-teal-200" },
     purple: { hero: "from-purple-600 to-purple-800", btn: "bg-purple-600 hover:bg-purple-700", badge: "bg-purple-100 text-purple-700", card: "hover:border-purple-300 hover:bg-purple-50", border: "border-purple-200" },
-    green:  { hero: "from-green-600 to-green-800",  btn: "bg-green-600 hover:bg-green-700",  badge: "bg-green-100 text-green-700",  card: "hover:border-green-300 hover:bg-green-50", border: "border-green-200" },
+    green: { hero: "from-green-600 to-green-800", btn: "bg-green-600 hover:bg-green-700", badge: "bg-green-100 text-green-700", card: "hover:border-green-300 hover:bg-green-50", border: "border-green-200" },
     indigo: { hero: "from-teal-700 to-teal-900", btn: "bg-indigo-600 hover:bg-indigo-700", badge: "bg-indigo-100 text-indigo-700", card: "hover:border-indigo-300 hover:bg-indigo-50", border: "border-indigo-200" },
   };
   const c = colorMap[accentColor] ?? colorMap.blue;
