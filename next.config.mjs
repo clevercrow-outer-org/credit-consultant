@@ -16,6 +16,9 @@ const nextConfig = {
       { source: '/personal-loan', destination: '/loans', permanent: true },
       { source: '/business-loan', destination: '/loans', permanent: true },
       { source: '/cibil-repair-agency', destination: '/credit-repair', permanent: true },
+      { source: '/cibil-repair-agency-in-:city', destination: '/credit-report-repair-agency/:city', permanent: true },
+      { source: '/credit-repair-agency-in-:city', destination: '/credit-report-repair-agency/:city', permanent: true },
+      { source: '/company-credit-report-in-:city', destination: '/company-credit-information-report/:city', permanent: true },
     ];
   },
   async rewrites() {
