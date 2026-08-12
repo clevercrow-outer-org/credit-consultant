@@ -10,7 +10,7 @@ import { Label } from "./ui/label";
 import cibilLogo from "@/imports/CIBIL_Logo.png";
 import {
   sendOtp, verifyOtp, fetchCibilReport, saveContact,
-  generateReportPdf, downloadPdf, type ContactRecord,
+  generateReportPdf, downloadPdf, fetchPrefillByMobile, type ContactRecord,
 } from "../api/creditApi";
 
 type Step = "mobile" | "otp" | "details" | "fetching" | "result";
@@ -84,6 +84,8 @@ export function CheckScoreModal({ open, onClose }: Props) {
   if (!open) return null;
   const [step, setStep]     = useState<Step>("mobile");
   const [mobile, setMobile] = useState("");
+  const [lookupMobile, setLookupMobile] = useState("");
+  const [prefillMessage, setPrefillMessage] = useState("");
   const [otp, setOtp]       = useState("");
   const [devOtp, setDevOtp] = useState<string | null>(null);
   const [timer, setTimer]   = useState(0);
@@ -92,6 +94,7 @@ export function CheckScoreModal({ open, onClose }: Props) {
   const [mobileErr, setMobileErr] = useState("");
   const [otpErr, setOtpErr]       = useState("");
   const [formErrs, setFormErrs]   = useState<Record<string, string>>({});
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const [otpLoading,    setOtpLoading]    = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
@@ -112,12 +115,53 @@ export function CheckScoreModal({ open, onClose }: Props) {
   if (!open) return null;
 
   const reset = () => {
-    setStep("mobile"); setMobile(""); setOtp(""); setDevOtp(null); setTimer(0);
+    setStep("mobile"); setMobile(""); setLookupMobile(""); setPrefillMessage(""); setOtp(""); setDevOtp(null); setTimer(0);
     setForm({ name: "", idType: "PAN", idNumber: "", dob: "", gender: "", consent: false });
     setMobileErr(""); setOtpErr(""); setFormErrs({});
     setResult(null); setContact(null); setPdfBlob(null);
   };
   const handleClose = () => { onClose(); setTimeout(reset, 300); };
+
+  const handleSearchMobile = async () => {
+    const cleanMobile = lookupMobile.replace(/\D/g, "").slice(-10);
+    if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
+      setMobileErr("Enter a valid 10-digit mobile number");
+      setPrefillMessage("");
+      return;
+    }
+
+    setMobileErr("");
+    setPrefillMessage("");
+    setSearchLoading(true);
+    setMobile(cleanMobile);
+    setLookupMobile(cleanMobile);
+
+    try {
+      const profile = await fetchPrefillByMobile(cleanMobile);
+      if (!profile) {
+        setForm((current) => ({ ...current, name: "", idType: "PAN", idNumber: "", dob: "", gender: "", consent: false }));
+        setPrefillMessage("Number details not found. Please fill manually.");
+        setStep("details");
+        return;
+      }
+
+      setForm({
+        name: profile.full_name || "",
+        idType: "PAN",
+        idNumber: (profile.pan || "").toUpperCase(),
+        dob: profile.dob || "",
+        gender: (profile.gender === "M" || profile.gender === "F") ? profile.gender : "",
+        consent: true,
+      });
+      setStep("details");
+    } catch {
+      setForm((current) => ({ ...current, name: "", idType: "PAN", idNumber: "", dob: "", gender: "", consent: false }));
+      setPrefillMessage("Number details not found. Please fill manually.");
+      setStep("details");
+    } finally {
+      setSearchLoading(false);
+    }
+  };
 
   /* ── Step 1: Send OTP ── */
   const handleSendOtp = async () => {
@@ -408,10 +452,39 @@ export function CheckScoreModal({ open, onClose }: Props) {
             </label>
             {formErrs.consent && <p className="text-xs text-red-500">{formErrs.consent}</p>}
 
-            <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700 h-11">
-              <TrendingUp className="w-4 h-4 mr-2" /> Fetch My Credit Score
-            </Button>
-          </form>
+              <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700 h-11">
+                <TrendingUp className="w-4 h-4 mr-2" /> Direct CIBIL Check
+              </Button>
+            </form>
+          </div>
+        )}
+
+        {step === "mobile" && (
+          <div className="px-6 pb-7 pt-3 space-y-4">
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+              <Label className="text-xs font-bold text-blue-900">Search Mobile Number</Label>
+              <div className="mt-3 flex gap-3">
+                <Input
+                  autoComplete="off"
+                  placeholder="Enter 10-digit mobile"
+                  maxLength={10}
+                  value={lookupMobile}
+                  onChange={(e) => setLookupMobile(e.target.value.replace(/\D/g, ""))}
+                  className="h-11 rounded-xl"
+                />
+                <Button type="button" onClick={handleSearchMobile} disabled={searchLoading} className="h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold whitespace-nowrap">
+                  {searchLoading ? (
+                    <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Searching...</>
+                  ) : (
+                    "Search"
+                  )}
+                </Button>
+              </div>
+              {mobileErr && <p className="text-xs text-red-500 mt-2 font-semibold">{mobileErr}</p>}
+              {prefillMessage && <p className="text-xs text-amber-700 mt-2 font-semibold">{prefillMessage}</p>}
+              <p className="text-[11px] text-blue-700 mt-2">Search by mobile to fetch profile data, then continue with the details form.</p>
+            </div>
+          </div>
         )}
 
         {/* ── FETCHING ── */}
