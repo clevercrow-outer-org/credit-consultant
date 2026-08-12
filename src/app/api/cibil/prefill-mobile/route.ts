@@ -22,6 +22,7 @@ export async function POST(req: Request) {
     });
 
     const response = await res.json().catch(() => null);
+    console.log(response)
     if (!response || response?.status === false) {
       return NextResponse.json({ status: false, message: response?.message || "Prefill failed" }, { status: res.status || 400 });
     }

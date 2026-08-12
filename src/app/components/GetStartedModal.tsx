@@ -7,7 +7,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import cibilLogo from "@/imports/CIBIL_Logo.png";
-import { generateReportPdf, downloadPdf, saveContact, type ContactRecord } from "@/app/api/creditApi";
+import { generateReportPdf, downloadPdf, saveContact, fetchPrefillByMobile, type ContactRecord } from "@/app/api/creditApi";
 
 type Step = "mobile" | "otp" | "details";
 
@@ -80,6 +80,10 @@ export function GetStartedModal({ open, onClose }: Props) {
     gender: "" as typeof GENDER_OPTIONS[number] | "",
     consent: true,
   });
+  const [lookupMobile, setLookupMobile] = useState("");
+  const [prefillMessage, setPrefillMessage] = useState("");
+  const [showMobileLookup, setShowMobileLookup] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -103,6 +107,55 @@ export function GetStartedModal({ open, onClose }: Props) {
     if (!form.consent) e.consent = "Consent is required to proceed";
     setFormErrors(e);
     return Object.keys(e).length === 0;
+  };
+
+  const normalizePrefillGender = (value?: string) => {
+    const normalized = String(value ?? "").trim().toLowerCase();
+    if (normalized === "male" || normalized === "m") return "Male";
+    if (normalized === "female" || normalized === "f") return "Female";
+    if (normalized === "other" || normalized === "o") return "Other";
+    return "";
+  };
+
+  const handleSearchByMobile = async () => {
+    const cleanMobile = lookupMobile.replace(/\D/g, "").slice(-10);
+    if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
+      setFormErrors((current) => ({ ...current, formMobile: "Enter a valid 10-digit mobile number" }));
+      setPrefillMessage("");
+      return;
+    }
+
+    setFormErrors((current) => ({ ...current, formMobile: undefined }));
+    setPrefillMessage("");
+    setSearchLoading(true);
+    setForm((current) => ({ ...current, formMobile: cleanMobile }));
+
+    try {
+      const profile = await fetchPrefillByMobile(cleanMobile);
+      if (!profile) {
+        setShowMobileLookup(false);
+        setPrefillMessage("Number details not found. Please fill manually.");
+        setForm((current) => ({ ...current, name: "", idNumber: "", gender: "", consent: true }));
+        return;
+      }
+
+      setForm({
+        ...form,
+        formMobile: profile.mobile || cleanMobile,
+        name: profile.full_name || "",
+        idNumber: (profile.pan || "").toUpperCase(),
+        gender: normalizePrefillGender(profile.gender ?? ""),
+        consent: true,
+      });
+      setShowMobileLookup(false);
+      setPrefillMessage("");
+    } catch {
+      setShowMobileLookup(false);
+      setPrefillMessage("Number details not found. Please fill manually.");
+      setForm((current) => ({ ...current, name: "", idNumber: "", gender: "", consent: true }));
+    } finally {
+      setSearchLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -142,6 +195,9 @@ export function GetStartedModal({ open, onClose }: Props) {
     onClose();
     setTimeout(() => {
       setForm({ name: "", idType: "PAN", idNumber: "", formMobile: "", gender: "", consent: true });
+      setLookupMobile("");
+      setPrefillMessage("");
+      setShowMobileLookup(true);
       setFormErrors({});
       setSubmitted(false);
       setPdfReady(false);
@@ -176,117 +232,165 @@ export function GetStartedModal({ open, onClose }: Props) {
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden max-h-[95vh] overflow-y-auto">
         <Header subtitle="Direct CIBIL Report Request" />
 
-        {/* ── DETAILS FORM ── */}
         {!submitted && (
-          <form onSubmit={handleSubmit} className="px-6 pb-7 pt-4 space-y-4">
-            {/* Name */}
-            <div>
-              <Label htmlFor="gs-name">Name *</Label>
-              <Input
-                id="gs-name"
-                placeholder="Full name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className={`mt-1 ${formErrors.name ? "border-red-400" : ""}`}
-              />
-              {formErrors.name && <p className="text-xs text-red-500 mt-1">{formErrors.name}</p>}
-            </div>
-
-            {/* ID Type + ID Number side by side */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="gs-idtype">ID Type *</Label>
-                <div className="relative mt-1">
-                  <select
-                    id="gs-idtype"
-                    value={form.idType}
-                    onChange={(e) => setForm({ ...form, idType: e.target.value as typeof ID_TYPES[number], idNumber: "" })}
-                    className="w-full appearance-none border border-gray-300 rounded-xl px-3 py-2 pr-8 text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  >
-                    {ID_TYPES.map((t) => <option key={t}>{t}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
+          <div className="px-6 pb-7 pt-4 space-y-4">
+            {showMobileLookup && (
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                <Label className="text-xs font-bold text-blue-900">Search Mobile Number</Label>
+                <div className="mt-3 flex gap-3">
+                  <Input
+                    autoComplete="off"
+                    placeholder="Enter 10-digit mobile"
+                    maxLength={10}
+                    value={lookupMobile}
+                    onChange={(e) => setLookupMobile(e.target.value.replace(/\D/g, ""))}
+                    className="h-11 rounded-xl"
+                  />
+                  <Button type="button" onClick={handleSearchByMobile} disabled={searchLoading} className="h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold whitespace-nowrap">
+                    {searchLoading ? (
+                      <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Searching...</>
+                    ) : (
+                      "Search"
+                    )}
+                  </Button>
                 </div>
+                {formErrors.formMobile && <p className="text-xs text-red-500 mt-2 font-semibold">{formErrors.formMobile}</p>}
+                {prefillMessage && <p className="text-xs text-amber-700 mt-2 font-semibold">{prefillMessage}</p>}
+                <p className="text-[11px] text-blue-700 mt-2">Search by mobile to fetch profile data before continuing with the form.</p>
               </div>
+            )}
 
-              <div>
-                <Label htmlFor="gs-idnumber">ID Number *</Label>
-                <Input
-                  id="gs-idnumber"
-                  placeholder={form.idType === "PAN" ? "ABCDE1234F" : "12-digit number"}
-                  maxLength={form.idType === "PAN" ? 10 : 12}
-                  value={form.idNumber}
-                  onChange={(e) => setForm({ ...form, idNumber: form.idType === "PAN" ? e.target.value.toUpperCase() : e.target.value.replace(/\D/g, "") })}
-                  className={`mt-1 ${formErrors.idNumber ? "border-red-400" : ""}`}
-                />
-                {formErrors.idNumber && <p className="text-xs text-red-500 mt-1">{formErrors.idNumber}</p>}
+            {!showMobileLookup && (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Mobile search result</p>
+                  <p className="text-sm font-semibold text-slate-800">{form.formMobile ? `+91 ${form.formMobile}` : "Mobile updated"}</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowMobileLookup(true);
+                    setLookupMobile("");
+                    setPrefillMessage("");
+                    setForm((current) => ({ ...current, name: "", idNumber: "", formMobile: "", gender: "", consent: true }));
+                    setFormErrors({});
+                  }}
+                  className="text-xs font-bold"
+                >
+                  Use Another Mobile
+                </Button>
               </div>
-            </div>
+            )}
 
-            {/* Mobile */}
-            <div>
-              <Label htmlFor="gs-formmobile">Mobile *</Label>
-              <div className="flex mt-1">
-                <span className="inline-flex items-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-xl text-sm text-gray-500 font-medium">
-                  +91
-                </span>
-                <Input
-                  id="gs-formmobile"
-                  placeholder="10-digit mobile number"
-                  inputMode="numeric"
-                  maxLength={10}
-                  value={form.formMobile}
-                  onChange={(e) => setForm({ ...form, formMobile: e.target.value.replace(/\D/g, "") })}
-                  className={`rounded-l-none ${formErrors.formMobile ? "border-red-400" : ""}`}
-                />
-              </div>
-              {formErrors.formMobile && <p className="text-xs text-red-500 mt-1">{formErrors.formMobile}</p>}
-            </div>
+            {!showMobileLookup && (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="gs-name">Name *</Label>
+                  <Input
+                    id="gs-name"
+                    placeholder="Full name"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className={`mt-1 ${formErrors.name ? "border-red-400" : ""}`}
+                  />
+                  {formErrors.name && <p className="text-xs text-red-500 mt-1">{formErrors.name}</p>}
+                </div>
 
-            {/* Gender */}
-            <div>
-              <Label>Gender *</Label>
-              <div className="flex gap-3 mt-2">
-                {GENDER_OPTIONS.map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => setForm({ ...form, gender: g })}
-                    className={`flex-1 py-2 rounded-xl border-2 text-sm font-medium transition-all ${
-                      form.gender === g
-                        ? "border-teal-600 bg-blue-50 text-blue-700"
-                        : "border-gray-200 text-gray-600 hover:border-blue-300"
-                    }`}
-                  >
-                    {g}
-                  </button>
-                ))}
-              </div>
-              {formErrors.gender && <p className="text-xs text-red-500 mt-1">{formErrors.gender}</p>}
-            </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="gs-idtype">ID Type *</Label>
+                    <div className="relative mt-1">
+                      <select
+                        id="gs-idtype"
+                        value={form.idType}
+                        onChange={(e) => setForm({ ...form, idType: e.target.value as typeof ID_TYPES[number], idNumber: "" })}
+                        className="w-full appearance-none border border-gray-300 rounded-xl px-3 py-2 pr-8 text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      >
+                        {ID_TYPES.map((t) => <option key={t}>{t}</option>)}
+                      </select>
+                      <ChevronDown className="absolute right-2.5 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
 
-            {/* Consent */}
-            <div>
-              <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-xl border-2 transition-all ${
-                form.consent ? "border-blue-500 bg-blue-50" : formErrors.consent ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-blue-300"
-              }`}>
-                <input
-                  type="checkbox"
-                  checked={form.consent}
-                  onChange={(e) => setForm({ ...form, consent: e.target.checked })}
-                  className="mt-0.5 w-4 h-4 accent-teal-600 flex-shrink-0 cursor-pointer"
-                />
-                <span className="text-xs text-gray-700 leading-snug">
-                  I give consent (Hard Pull) * — I authorise Credit Consultant to fetch my full credit report from the bureau. This may appear as an inquiry on my credit profile.
-                </span>
-              </label>
-              {formErrors.consent && <p className="text-xs text-red-500 mt-1">{formErrors.consent}</p>}
-            </div>
+                  <div>
+                    <Label htmlFor="gs-idnumber">ID Number *</Label>
+                    <Input
+                      id="gs-idnumber"
+                      placeholder={form.idType === "PAN" ? "ABCDE1234F" : "12-digit number"}
+                      maxLength={form.idType === "PAN" ? 10 : 12}
+                      value={form.idNumber}
+                      onChange={(e) => setForm({ ...form, idNumber: form.idType === "PAN" ? e.target.value.toUpperCase() : e.target.value.replace(/\D/g, "") })}
+                      className={`mt-1 ${formErrors.idNumber ? "border-red-400" : ""}`}
+                    />
+                    {formErrors.idNumber && <p className="text-xs text-red-500 mt-1">{formErrors.idNumber}</p>}
+                  </div>
+                </div>
 
-            <Button type="submit" disabled={submitLoading} className="w-full bg-teal-600 hover:bg-teal-700 h-11 mt-1">
-              {submitLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Submitting…</> : "Submit & Get Report"}
-            </Button>
-          </form>
+                <div>
+                  <Label htmlFor="gs-formmobile">Mobile *</Label>
+                  <div className="flex mt-1">
+                    <span className="inline-flex items-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-xl text-sm text-gray-500 font-medium">
+                      +91
+                    </span>
+                    <Input
+                      id="gs-formmobile"
+                      placeholder="10-digit mobile number"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={form.formMobile}
+                      onChange={(e) => setForm({ ...form, formMobile: e.target.value.replace(/\D/g, "") })}
+                      className={`rounded-l-none ${formErrors.formMobile ? "border-red-400" : ""}`}
+                    />
+                  </div>
+                  {formErrors.formMobile && <p className="text-xs text-red-500 mt-1">{formErrors.formMobile}</p>}
+                </div>
+
+                <div>
+                  <Label>Gender *</Label>
+                  <div className="flex gap-3 mt-2">
+                    {GENDER_OPTIONS.map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setForm({ ...form, gender: g })}
+                        className={`flex-1 py-2 rounded-xl border-2 text-sm font-medium transition-all ${
+                          form.gender === g
+                            ? "border-teal-600 bg-blue-50 text-blue-700"
+                            : "border-gray-200 text-gray-600 hover:border-blue-300"
+                        }`}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                  {formErrors.gender && <p className="text-xs text-red-500 mt-1">{formErrors.gender}</p>}
+                </div>
+
+                <div>
+                  <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-xl border-2 transition-all ${
+                    form.consent ? "border-blue-500 bg-blue-50" : formErrors.consent ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-blue-300"
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={form.consent}
+                      onChange={(e) => setForm({ ...form, consent: e.target.checked })}
+                      className="mt-0.5 w-4 h-4 accent-teal-600 flex-shrink-0 cursor-pointer"
+                    />
+                    <span className="text-xs text-gray-700 leading-snug">
+                      I give consent (Hard Pull) * — I authorise Credit Consultant to fetch my full credit report from the bureau. This may appear as an inquiry on my credit profile.
+                    </span>
+                  </label>
+                  {formErrors.consent && <p className="text-xs text-red-500 mt-1">{formErrors.consent}</p>}
+                </div>
+
+                <Button type="submit" disabled={submitLoading} className="w-full bg-teal-600 hover:bg-teal-700 h-11 mt-1">
+                  {submitLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Submitting…</> : "Submit & Get Report"}
+                </Button>
+              </form>
+            )}
+          </div>
         )}
 
         {/* ── SUCCESS ── */}
