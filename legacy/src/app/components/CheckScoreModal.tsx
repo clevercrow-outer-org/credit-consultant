@@ -12,6 +12,7 @@ import {
   sendOtp, verifyOtp, fetchCibilReport, saveContact,
   generateReportPdf, downloadPdf, fetchPrefillByMobile, type ContactRecord,
 } from "../api/creditApi";
+import { openRazorpayCheckout } from "../api/razorpay";
 
 type Step = "mobile" | "otp" | "details" | "fetching" | "result";
 
@@ -201,12 +202,12 @@ export function CheckScoreModal({ open, onClose }: Props) {
     if (Object.keys(errs).length) return;
 
     setStep("fetching"); setApiLoading(true);
+    setFetchStatus("Opening Razorpay Payment Checkout (₹299)...");
 
     const contactId = `CS-${Date.now()}`;
     const pan = form.idType === "PAN" ? form.idNumber.toUpperCase() : undefined;
     const aadhaar = form.idType === "Aadhaar" ? form.idNumber : undefined;
 
-    // Save contact immediately (before API call)
     const baseContact: ContactRecord = {
       id: contactId,
       name: form.name,
@@ -218,57 +219,68 @@ export function CheckScoreModal({ open, onClose }: Props) {
       source: "Check Credit Score",
       report_id: contactId,
     };
-    saveContact(baseContact);
 
-    try {
-      setFetchStatus("Connecting to credit bureau…");
-      await new Promise(r => setTimeout(r, 800));
+    openRazorpayCheckout({
+      name: form.name,
+      mobile,
+      amountInRupees: 299,
+      onSuccess: async (payment) => {
+        setFetchStatus(`Payment Verified (${payment.razorpay_payment_id}). Connecting to CIBIL...`);
+        saveContact(baseContact);
 
-      setFetchStatus("Verifying PAN with CIBIL…");
-      const raw = await fetchCibilReport({
-        name: form.name, mobile, pan, aadhaar,
-        dob: form.dob, gender: form.gender as "M"|"F",
-        consent: "Y",
-      });
+        try {
+          setFetchStatus("Connecting to credit bureau...");
+          await new Promise(r => setTimeout(r, 800));
 
-      setFetchStatus("Generating report…");
-      await new Promise(r => setTimeout(r, 600));
+          setFetchStatus("Verifying PAN with CIBIL...");
+          const raw = await fetchCibilReport({
+            name: form.name, mobile, pan, aadhaar,
+            dob: form.dob, gender: form.gender as "M"|"F",
+            consent: "Y",
+          });
 
-      // Parse score from API response
-      const score  = raw?.score ?? raw?.cibil_score ?? raw?.CIBILScore ?? 0;
-      const rating = score >= 750 ? "Excellent" : score >= 700 ? "Good" : score >= 650 ? "Fair" : score > 0 ? "Needs Improvement" : "—";
-      const bureau = raw?.bureau ?? "CIBIL";
+          setFetchStatus("Generating report...");
+          await new Promise(r => setTimeout(r, 600));
 
-      const updatedContact: ContactRecord = {
-        ...baseContact,
-        score: Number(score),
-        rating,
-        bureau,
-        report_id: raw?.report_id ?? contactId,
-      };
+          const score  = raw?.score ?? raw?.cibil_score ?? raw?.CIBILScore ?? 0;
+          const rating = score >= 750 ? "Excellent" : score >= 700 ? "Good" : score >= 650 ? "Fair" : score > 0 ? "Needs Improvement" : "—";
+          const bureau = raw?.bureau ?? "CIBIL";
 
-      // Generate & store PDF
-      setFetchStatus("Preparing PDF…");
-      const blob = generateReportPdf(updatedContact, raw);
-      saveContact(updatedContact);
+          const updatedContact: ContactRecord = {
+            ...baseContact,
+            score: Number(score),
+            rating,
+            bureau,
+            report_id: raw?.report_id ?? contactId,
+          };
 
-      setContact(updatedContact);
-      setPdfBlob(blob);
-      setResult(raw);
-      setStep("result");
+          setFetchStatus("Preparing PDF...");
+          const blob = generateReportPdf(updatedContact, raw);
+          saveContact(updatedContact);
 
-    } catch (err: any) {
-      // API returned "No Record Found" or error — still save contact, show message
-      const updatedContact: ContactRecord = { ...baseContact, score: 0, rating: "—", bureau: "CIBIL" };
-      saveContact(updatedContact);
-      setContact(updatedContact);
-      const blob = generateReportPdf(updatedContact, {});
-      setPdfBlob(blob);
-      setResult({ error: err.message ?? "No record found" });
-      setStep("result");
-    } finally {
-      setApiLoading(false);
-    }
+          setContact(updatedContact);
+          setPdfBlob(blob);
+          setResult(raw);
+          setStep("result");
+
+        } catch (err: any) {
+          const updatedContact: ContactRecord = { ...baseContact, score: 0, rating: "—", bureau: "CIBIL" };
+          saveContact(updatedContact);
+          setContact(updatedContact);
+          const blob = generateReportPdf(updatedContact, {});
+          setPdfBlob(blob);
+          setResult({ error: err.message ?? "No record found" });
+          setStep("result");
+        } finally {
+          setApiLoading(false);
+        }
+      },
+      onDismiss: () => {
+        setApiLoading(false);
+        setFetchStatus("");
+        setStep("details");
+      },
+    });
   };
 
   const handleDownloadPdf = () => {
@@ -452,8 +464,8 @@ export function CheckScoreModal({ open, onClose }: Props) {
             </label>
             {formErrs.consent && <p className="text-xs text-red-500">{formErrs.consent}</p>}
 
-              <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700 h-11">
-                <TrendingUp className="w-4 h-4 mr-2" /> Direct CIBIL Check
+              <Button type="submit" disabled={apiLoading} className="w-full bg-teal-600 hover:bg-teal-700 h-11">
+                {apiLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Processing Payment...</> : <><TrendingUp className="w-4 h-4 mr-2" /> Pay ₹299 & Direct CIBIL Check</>}
               </Button>
             </form>
           </div>

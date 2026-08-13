@@ -108,8 +108,10 @@ export function Root({ children }: { children?: React.ReactNode }) {
           onClick={() => setScoreModalOpen(true)}
           className="w-1/2 h-14 sm:h-16 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-bold text-xs sm:text-base lg:text-lg uppercase tracking-wider transition-all flex items-center justify-center gap-2 sm:gap-3 whitespace-nowrap active:opacity-90 rounded-none border-none shadow-md"
         >
-          <TrendingUp className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-white stroke-[2.5] flex-shrink-0" />
+          <div className="flex justify-center items-center">
+          <TrendingUp className="mr-2 w-5 h-5 sm:w-5.5 sm:h-5.5 text-white stroke-[2.5] flex-shrink-0" />
           <span>BOOST YOUR SCORE</span>
+          </div>
         </button>
 
         <a
@@ -125,7 +127,6 @@ export function Root({ children }: { children?: React.ReactNode }) {
           <span>CHAT WITH US</span>
         </a>
       </div>
-
       <CheckScoreModal open={scoreModalOpen} onClose={() => setScoreModalOpen(false)} />
     </div>
   );
