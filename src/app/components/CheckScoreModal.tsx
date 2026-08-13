@@ -269,6 +269,11 @@ export function CheckScoreModal({ open, onClose }: Props) {
           setApiLoading(false);
         }
       },
+      onDismiss: () => {
+        setApiLoading(false);
+        setFetchStatus("");
+        setStep("details");
+      },
     });
   };
 
@@ -465,8 +470,8 @@ export function CheckScoreModal({ open, onClose }: Props) {
               </label>
               {formErrs.consent && <p className="text-xs text-red-500">{formErrs.consent}</p>}
 
-              <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700 h-11">
-                <TrendingUp className="w-4 h-4 mr-2" /> Direct CIBIL Check
+              <Button type="submit" disabled={apiLoading} className="w-full bg-teal-600 hover:bg-teal-700 h-11">
+                {apiLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Processing Payment...</> : <><TrendingUp className="w-4 h-4 mr-2" /> Pay ₹299 & Direct CIBIL Check</>}
               </Button>
             </form>
           </div>

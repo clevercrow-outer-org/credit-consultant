@@ -8,6 +8,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import cibilLogo from "@/imports/CIBIL_Logo.png";
 import { generateReportPdf, downloadPdf, saveContact, fetchPrefillByMobile, type ContactRecord } from "@/app/api/creditApi";
+import { openRazorpayCheckout } from "@/app/api/razorpay";
 
 type Step = "mobile" | "otp" | "details";
 
@@ -86,6 +87,7 @@ export function GetStartedModal({ open, onClose }: Props) {
   const [searchLoading, setSearchLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfReady, setPdfReady] = useState(false);
@@ -162,9 +164,24 @@ export function GetStartedModal({ open, onClose }: Props) {
     e.preventDefault();
     if (!validateForm()) return;
     setSubmitLoading(true);
-    await new Promise((r) => setTimeout(r, 1600));
-    setSubmitLoading(false);
-    setSubmitted(true);
+    setPaymentStatus("Opening Razorpay Checkout (₹299)...");
+
+    openRazorpayCheckout({
+      name: form.name.trim(),
+      mobile: form.formMobile.trim(),
+      amountInRupees: 299,
+      onSuccess: async (payment) => {
+        setPaymentStatus(`Payment Verified (${payment.razorpay_payment_id}). Preparing your request...`);
+        await new Promise((r) => setTimeout(r, 800));
+        setSubmitLoading(false);
+        setPaymentStatus("");
+        setSubmitted(true);
+      },
+      onDismiss: () => {
+        setSubmitLoading(false);
+        setPaymentStatus("");
+      },
+    });
   };
 
   const handleFetchEquifax = async () => {
@@ -200,6 +217,7 @@ export function GetStartedModal({ open, onClose }: Props) {
       setShowMobileLookup(true);
       setFormErrors({});
       setSubmitted(false);
+      setPaymentStatus("");
       setPdfReady(false);
       setPdfLoading(false);
     }, 300);
@@ -385,8 +403,15 @@ export function GetStartedModal({ open, onClose }: Props) {
                   {formErrors.consent && <p className="text-xs text-red-500 mt-1">{formErrors.consent}</p>}
                 </div>
 
+                {paymentStatus && (
+                  <div className="p-3 rounded-xl bg-teal-50 border border-teal-200 text-teal-800 text-xs font-bold flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
+                    <span>{paymentStatus}</span>
+                  </div>
+                )}
+
                 <Button type="submit" disabled={submitLoading} className="w-full bg-teal-600 hover:bg-teal-700 h-11 mt-1">
-                  {submitLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Submitting…</> : "Submit & Get Report"}
+                  {submitLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Processing Payment...</> : "Pay ₹299 & Get Report"}
                 </Button>
               </form>
             )}
