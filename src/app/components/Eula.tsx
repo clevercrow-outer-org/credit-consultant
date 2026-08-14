@@ -11,7 +11,7 @@ export function EndUserLicenseAgreement() {
         keywords="eula, end user license agreement, credit consultant terms, software license"
       />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-8 md:p-12">
           <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-4 tracking-tight">
             End-User License Agreement

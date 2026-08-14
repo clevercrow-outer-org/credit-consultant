@@ -28,6 +28,7 @@ export const CITY_REDIRECTS: Record<string, string> = {
   "dehradun":     "/individual/north/dehradun",
   "shimla":       "/individual/north/shimla",
   "jammu":        "/individual/north/jammu",
+  "srinagar":     "/individual/north/srinagar",
   "panipat":      "/individual/north/panipat",
 
   // ── South ──────────────────────────────────────────────
