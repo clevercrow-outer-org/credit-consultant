@@ -1,10 +1,9 @@
-import { notFound } from "next/navigation";
-import { BlogPost, BLOG_POSTS } from '../../components/BlogPost';
+'use client';
 
-export default async function SingleBlogPost({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  if (slug && !BLOG_POSTS[slug]) {
-    notFound();
-  }
-  return <BlogPost />;
+import { useParams } from 'next/navigation';
+import { BlogPost } from '../../components/BlogPost';
+
+export default function SingleBlogPost() {
+  const params = useParams<{ slug: string }>();
+  return <BlogPost initialSlug={params?.slug} />;
 }

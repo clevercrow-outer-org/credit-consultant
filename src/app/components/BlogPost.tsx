@@ -1080,8 +1080,9 @@ export const BLOG_POSTS: Record<string, BlogPostData> = {
 };
 
 /* ── Individual Post Page ───────────────────────────────────── */
-export function BlogPost() {
-  const { slug } = useParams<{ slug: string }>();
+export function BlogPost({ initialSlug }: { initialSlug?: string } = {}) {
+  const params = useParams<{ slug: string }>();
+  const slug = (initialSlug || params?.slug || "") as string;
   const post = slug ? BLOG_POSTS[slug] : null;
   if (!post) return <Navigate to="/blogs" replace />;
 
