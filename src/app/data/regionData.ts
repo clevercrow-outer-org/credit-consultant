@@ -102,6 +102,8 @@ export const REGION_CITIES: Record<RegionKey, CityEntry[]> = {
     { slug: "dehradun",     name: "Dehradun",     state: "Uttarakhand",    tier: "metropolitan",  population: "800K+", pincode: "248001" },
     { slug: "shimla",       name: "Shimla",       state: "Himachal Pradesh", tier: "metropolitan", population: "200K+", pincode: "171001" },
     { slug: "jammu",        name: "Jammu",        state: "J&K",            tier: "metropolitan",  population: "600K+", pincode: "180001" },
+    { slug: "srinagar",     name: "Srinagar",     state: "Jammu & Kashmir", tier: "metropolitan", population: "1.5M+", pincode: "190001",
+      localIndustry: "Handicrafts, Tourism, Horticulture", localFact: "Srinagar has a growing demand for home loans and MSME credit in handicrafts, carpets, and saffron trade.", localLenders: ["J&K Bank", "SBI Srinagar", "Punjab National Bank"], individualNote: "Srinagar professionals and salaried employees in government departments benefit from our targeted score improvement programs.", commercialNote: "Srinagar handicraft, saffron, and tourism MSMEs need strong business CIBIL scores for J&K Bank working capital credit limits." },
     { slug: "panipat",      name: "Panipat",      state: "Haryana",        tier: "metropolitan",  population: "500K+", pincode: "132103" },
   ],
 
