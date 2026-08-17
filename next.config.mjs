@@ -6,6 +6,13 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      // Malware / legacy WordPress ?p= parameter 404 redirect
+      {
+        source: '/:path*',
+        has: [{ type: 'query', key: 'p' }],
+        destination: '/404',
+        permanent: false,
+      },
       { source: '/blog', destination: '/blogs', permanent: true },
       { source: '/contact-us', destination: '/contact', permanent: true },
       { source: '/contact-us.php', destination: '/contact', permanent: true },
