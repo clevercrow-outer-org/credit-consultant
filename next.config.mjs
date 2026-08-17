@@ -17,6 +17,7 @@ const nextConfig = {
       { source: '/personal-loan', destination: '/loans', permanent: true },
       { source: '/business-loan', destination: '/loans', permanent: true },
       { source: '/cibil-repair-agency', destination: '/credit-repair', permanent: true },
+      { source: '/cibil-credit-score-repair', destination: '/credit-repair', permanent: true },
 
       // Legacy City Page 301 Redirects
       { source: '/cibil-score-repair-agency-in-:city', destination: '/credit-report-repair-agency/:city', permanent: true },
